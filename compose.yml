@@ -4,6 +4,6 @@ services:
     volumes:
       - ./app:/app
       - ./db:/app/db
-    command: python /app/src/app.py
-#    tty: true
-#    stdin_open: true
+#    command: python /app/src/app.py
+    tty: true
+    stdin_open: true

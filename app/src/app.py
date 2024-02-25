@@ -1,11 +1,12 @@
 import sys
 import requests
+import re
 from feed import feed
 from models.release_notes import ReleaseNote
 from bs4 import BeautifulSoup
 from sqlmodel import SQLModel, Session,create_engine,select
 
-release_notes_path = "https://docs.snowflake.com/ja/release-notes/"
+release_notes_path = "https://docs.snowflake.com/en/release-notes/"
 release_notes_url = f"{release_notes_path}/new-features"
 sqlite3_path = "/app/db/test.db"
 sqlite3_url = f"sqlite:///{sqlite3_path}"
@@ -29,9 +30,15 @@ def main()->int:
             title = element.getText()
             if title in titles:
                 continue
+            url = f"{release_notes_path}{element['href']}"
+            attr = get_attribute_from_url(url)
+            
             release_note = ReleaseNote()
+            release_note.url = url
             release_note.title = title
-            release_note.url = f"{release_notes_path}/{element['href']}"
+            release_note.year = attr["year"]
+            release_note.major = attr["major"]
+            release_note.minor = attr["minor"]
             session.add(release_note)
             num_new += 1
         session.commit()
@@ -47,6 +54,22 @@ def main()->int:
         print(f"{num_new} added.")
 
     return 0
+
+def get_attribute_from_url(url:str):
+    #パターン1
+    pattern1 = re.search(r'.*release\-notes\/(\d{4})\/([0-9]{1,2})_([0-9]{1,2})',url)
+    #パターン2
+    pattern2 = re.search(r'.*release\-notes\/(\d{4})\/([a-z]+)\/([0-9]+)\-([0-9]+)\-([0-9]+)',url)
+
+    if pattern1 != None:
+        ret = {"year":pattern1.group(1),"major":pattern1.group(2),"minor":pattern1.group(3)}
+    elif pattern2 != None:
+        minor = "{year}-{month}-{day}".format(year=pattern2.group(3),month=pattern2.group(4),day=pattern2.group(5))
+        ret = {"year":pattern2.group(1),"major":pattern2.group(2),"minor":minor}
+    else:
+        raise Exception("Unknown url format. {url}".format(url=url))
+
+    return ret
 
 if __name__ == '__main__':
     sys.exit(main())  # next section explains the use of sys.exit

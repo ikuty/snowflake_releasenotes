@@ -8,7 +8,16 @@ class ReleaseNote(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     title: str
     url: str
+    year: int
+    major: str
+    minor: str
     created_at: datetime = Field(default_factory=datetime.now, nullable=False)
 
     def getEntryString(self, db:Session)->str:
-        return entry.format(id=self.id,title=self.title,url=self.url,updated_at=self.created_at.isoformat(),summary="*")
+        return entry.format(
+            id=self.id,
+            title=self.title,
+            url=self.url,
+            updated_at=self.created_at.isoformat(),
+            published_at=self.created_at.isoformat(),
+            summary="*")
