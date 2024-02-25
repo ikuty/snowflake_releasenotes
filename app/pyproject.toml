@@ -1,0 +1,13 @@
+[tool.poetry]
+name = "backend"
+version = "0.0.0"
+description = ""
+authors = []
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pydantic = "^2.6.2"
+beautifulsoup4 = "^4.12.3"
+requests = "^2.31.0"
+pysqlite3 = "^0.5.2"
+sqlmodel = "^0.0.16"

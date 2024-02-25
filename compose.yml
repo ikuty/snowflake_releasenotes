@@ -1,0 +1,9 @@
+services:
+  app:
+    build: app
+    volumes:
+      - ./app:/app
+      - ./db:/app/db
+    command: python /app/src/app.py
+#    tty: true
+#    stdin_open: true
