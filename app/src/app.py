@@ -1,6 +1,8 @@
 import sys
 import requests
 import re
+import aiohttp
+import asyncio
 from feed import feed
 from models.release_notes import ReleaseNote
 from bs4 import BeautifulSoup
@@ -12,11 +14,10 @@ sqlite3_path = "/app/db/test.db"
 sqlite3_url = f"sqlite:///{sqlite3_path}"
 rss_path = "/app/dist/sf_release_notes.xml"
 
-def main()->int:
+async def retrieve():
     response = requests.get(release_notes_url)
     soup = BeautifulSoup(response.text,'html.parser')
     engine = create_engine(sqlite3_url, echo=False)
-    num_new = 0
     with Session(engine) as session:
         #テーブルが無い場合に作成する
         SQLModel.metadata.create_all(engine)
@@ -25,14 +26,15 @@ def main()->int:
         release_notes = session.exec(select(ReleaseNote).order_by(ReleaseNote.created_at)).all()
         titles = [release_note.title for release_note in release_notes]
 
-        #今回取得したリリースノートが過去に取得済みでなければ永続化する
+        #目次を走査する
+        num_add = 0
         for element in soup.select('li.toctree-l1 >a'):
             title = element.getText()
             if title in titles:
                 continue
+
             url = f"{release_notes_path}{element['href']}"
             attr = get_attribute_from_url(url)
-            
             release_note = ReleaseNote()
             release_note.url = url
             release_note.title = title
@@ -40,20 +42,27 @@ def main()->int:
             release_note.major = attr["major"]
             release_note.minor = attr["minor"]
             session.add(release_note)
-            num_new += 1
+            num_add += 1
+
+        #保存
         session.commit()
+        if num_add > 0:
+            print(num_add)
+        entries = "".join([(release_note.getEntryString(session)) for release_note in release_notes])
+        s = feed.format(updated_at=release_notes[0].created_at.isoformat(),entries=entries)
+        with open(rss_path,'w') as f:
+            f.write(s)
+    return
 
-        #RSSを作る
-        if len(release_notes) > 0:
-            entries = "".join([(release_note.getEntryString(session)) for release_note in release_notes])
-            s = feed.format(updated_at=release_notes[0].created_at.isoformat(),entries=entries)
-            with open(rss_path,'w') as f:
-                f.write(s)
-        
-        #標準出力
-        print(f"{num_new} added.")
-
-    return 0
+async def store_rss():
+    engine = create_engine(sqlite3_url, echo=False)
+    with Session(engine) as session:
+        release_notes = session.exec(select(ReleaseNote).order_by(ReleaseNote.created_at)).all()
+        entries = "".join([(release_note.getEntryString(session)) for release_note in release_notes])
+        s = feed.format(updated_at=release_notes[0].created_at.isoformat(),entries=entries)
+        with open(rss_path,'w') as f:
+            f.write(s)
+    return
 
 def get_attribute_from_url(url:str):
     #パターン1
@@ -71,5 +80,9 @@ def get_attribute_from_url(url:str):
 
     return ret
 
+async def main():
+    await retrieve()
+
 if __name__ == '__main__':
-    sys.exit(main())  # next section explains the use of sys.exit
+    asyncio.run(main())
+    asyncio.run(store_rss())

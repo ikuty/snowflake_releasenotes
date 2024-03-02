@@ -15,4 +15,4 @@ COPY . .
 
 RUN poetry install
 
-CMD ["python","/app/src/test.py"]
+#CMD ["python","/app/src/app.py"]
