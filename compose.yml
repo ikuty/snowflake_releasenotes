@@ -4,5 +4,5 @@ services:
     volumes:
       - ./app:/app
       - ./db:/app/db
-    tty: true
-    stdin_open: true
+#    tty: true
+#    stdin_open: true
